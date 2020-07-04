@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/mrpineapples/go-grpc/calculator/calculatorpb"
 	"google.golang.org/grpc"
@@ -21,7 +22,8 @@ func main() {
 	c := calculatorpb.NewCalculatorServiceClient(cc)
 	// doUnary(c)
 
-	doServerStreaming(c)
+	// doServerStreaming(c)
+	doClientStreaming(c)
 }
 
 func doUnary(c calculatorpb.CalculatorServiceClient) {
@@ -59,4 +61,29 @@ func doServerStreaming(c calculatorpb.CalculatorServiceClient) {
 
 		log.Printf("Response from PrimeDecomposition: %v", msg.GetPrimeNumber())
 	}
+}
+
+func doClientStreaming(c calculatorpb.CalculatorServiceClient) {
+	fmt.Println("Starting a Client Stream RPC...")
+
+	stream, err := c.ComputeAverage(context.Background())
+	if err != nil {
+		log.Fatalf("Error while reading client stream: %v", err)
+	}
+
+	numbers := []int32{1, 2, 3, 4}
+	for _, num := range numbers {
+		fmt.Printf("Sending req: %v\n", num)
+		stream.Send(&calculatorpb.ComputeAverageRequest{
+			Number: num,
+		})
+		time.Sleep(1000 * time.Millisecond)
+	}
+
+	res, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("Error while receiving response from ComputeAverage: %v", err)
+	}
+
+	fmt.Printf("ComputeAverage Response: %v\n", res.GetAverage())
 }
